@@ -135,11 +135,11 @@ class BookingController extends Controller
     private function authorized(Request $request, string $reference): Booking
     {
         $booking = Booking::query()->where('reference', strtoupper($reference))->first();
-        $token = $request->header('X-Booking-Token') ?? $request->query('token');
         $user = auth('sanctum')->user();
 
         $allowed = $booking && (
-            $booking->matchesManageToken($token)
+            $booking->matchesManageToken($request->header('X-Booking-Token'))
+            || $booking->matchesManageToken($request->query('token'))
             || ($user && ($booking->user_id === $user->id || $user->isStaff()))
         );
 

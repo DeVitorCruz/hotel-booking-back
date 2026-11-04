@@ -1,61 +1,75 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Hotel Booking — Laravel API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Reusable backend for small hotels, pousadas and guesthouses. Pairs with the Angular
+frontend (hotel theme). Forked from `ecommerce-blog-back@df04a2e` with the Mercatura
+platform/tenant layer and marketplace modules removed; one install = one hotel.
 
-## About Laravel
+**Stack:** Laravel 12 · PHP 8.2+ · MariaDB/MySQL · Sanctum · Spatie Permission · PayPal Orders v2
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## What it does
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Room types, rooms, amenities, photos, seasonal rates (`rate_overrides`), room blocks
+- Availability search with per-night pricing, taxes and online deposit
+- Guest checkout without an account (manage-booking token by email), or logged-in guests
+- **No double bookings:** every sold or blocked night is a `room_nights` row with a unique
+  `(room_id, date)` index; concurrent requests fall back to the next free room
+- PayPal: create order → buyer approves (JS SDK) → server capture; webhooks cover closed tabs
+  and refunds; automatic refund on free cancellation
+- Pay at hotel option; unpaid PayPal holds expire after `HOTEL_HOLD_MINUTES`
+- Staff API: bookings, walk-ins, check-in/out, cancel/refund, room blocks, hotel settings
+- Content kept from the base project: blog, FAQ, contact form, staff spotlights, auth, social login
+- Roles: `owner`, `admin`, `receptionist`, `editor`, `guest`
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Install a new client
 
-## Learning Laravel
+```bash
+git clone <this repo> hotel-api && cd hotel-api
+composer install --no-dev --optimize-autoloader
+cp .env.example .env && php artisan key:generate
+# edit .env: DB_*, HOTEL_*, PAYPAL_*, OWNER_*, FRONTEND_URL, MAIL_*
+php artisan migrate --seed --force        # roles + owner account (+ demo rooms if SEED_DEMO_HOTEL=true)
+php artisan storage:link
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Two processes must run in production:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```cron
+* * * * * cd /var/www/hotel-api && php artisan schedule:run >> /dev/null 2>&1
+```
+```ini
+; supervisor: emails are queued
+[program:hotel-queue]
+command=php /var/www/hotel-api/artisan queue:work --tries=3 --max-time=3600
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### PayPal setup
+1. developer.paypal.com → Apps & Credentials → create app (sandbox first) → copy client ID/secret.
+2. Add a webhook to `https://<api-domain>/api/webhooks/paypal` with events
+   `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`,
+   `PAYMENT.CAPTURE.REFUNDED` → copy its ID into `PAYPAL_WEBHOOK_ID`.
+3. Use the client's own PayPal business account in live mode; money goes straight to them.
 
-## Laravel Sponsors
+## Booking flow (frontend contract)
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+| Step | Call |
+|---|---|
+| Hotel info + PayPal client ID | `GET /api/hotel` |
+| Search | `GET /api/availability?check_in=&check_out=&adults=&children=` |
+| Book | `POST /api/bookings` → `{reference, manage_token, status, payment: {paypal_order_id}}` |
+| PayPal `createOrder` | return `payment.paypal_order_id` from the step above |
+| PayPal `onApprove` | `POST /api/bookings/{ref}/paypal/capture {order_id}` + header `X-Booking-Token` |
+| Card declined | `POST /api/bookings/{ref}/paypal/retry` → new order id |
+| Manage | `GET /api/bookings/{ref}?token=` · `POST /api/bookings/{ref}/cancel` |
 
-### Premium Partners
+Errors from the booking flow return `{message, code}`; codes include `no_availability`,
+`invalid_dates`, `min_nights`, `too_many_guests`, `hold_expired`, `payment_failed`,
+`payment_method_disabled`, `gateway_unavailable`.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Tests
 
-## Contributing
+```bash
+php artisan test                          # SQLite in memory
+DB_CONNECTION=mariadb DB_DATABASE=hotel_test DB_USERNAME=... DB_PASSWORD=... php artisan test
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+PayPal is faked with `Http::fake()`; no credentials needed.
