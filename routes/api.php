@@ -16,6 +16,12 @@
  */
 
 use App\Http\Controllers\Api\Admin\BookingAdminController;
+use App\Http\Controllers\Api\Admin\CalendarController;
+use App\Http\Controllers\Api\Admin\DashboardController;
+use App\Http\Controllers\Api\Admin\RateOverrideController;
+use App\Http\Controllers\Api\Admin\RoomAdminController;
+use App\Http\Controllers\Api\Admin\RoomTypeAdminController;
+use App\Http\Controllers\Api\Admin\StaffController;
 use App\Http\Controllers\Api\Admin\RoomBlockController;
 use App\Http\Controllers\Api\Admin\SettingsController;
 use App\Http\Controllers\Api\AvailabilityController;
@@ -88,6 +94,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('staff')->prefix('admin')->group(function () {
         // Bookings / front desk
         Route::middleware('permission:bookings.view-any')->group(function () {
+            Route::get('/dashboard', DashboardController::class);
+            Route::get('/calendar', CalendarController::class);
             Route::get('/bookings', [BookingAdminController::class, 'index']);
             Route::get('/bookings/{booking}', [BookingAdminController::class, 'show']);
         });
@@ -99,6 +107,38 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('permission:bookings.cancel-any')->group(function () {
             Route::post('/bookings/{booking}/cancel', [BookingAdminController::class, 'cancel']);
             Route::post('/bookings/{booking}/refund', [BookingAdminController::class, 'refund']);
+        });
+
+        // Room types, rooms and seasonal rates
+        Route::middleware('permission:rooms.view')->group(function () {
+            Route::get('/room-types', [RoomTypeAdminController::class, 'index']);
+            Route::get('/room-types/{roomType}', [RoomTypeAdminController::class, 'show']);
+            Route::get('/rooms', [RoomAdminController::class, 'index']);
+            Route::get('/rates', [RateOverrideController::class, 'index']);
+        });
+        Route::middleware('permission:rooms.manage')->group(function () {
+            Route::post('/room-types', [RoomTypeAdminController::class, 'store']);
+            Route::patch('/room-types/{roomType}', [RoomTypeAdminController::class, 'update']);
+            Route::delete('/room-types/{roomType}', [RoomTypeAdminController::class, 'destroy']);
+            Route::post('/room-types/{roomType}/images', [RoomTypeAdminController::class, 'addImage']);
+            Route::patch('/room-types/{roomType}/images/order', [RoomTypeAdminController::class, 'orderImages']);
+            Route::delete('/room-types/{roomType}/images/{image}', [RoomTypeAdminController::class, 'deleteImage']);
+            Route::post('/rooms', [RoomAdminController::class, 'store']);
+            Route::patch('/rooms/{room}', [RoomAdminController::class, 'update']);
+            Route::delete('/rooms/{room}', [RoomAdminController::class, 'destroy']);
+        });
+        Route::middleware('permission:rates.manage')->group(function () {
+            Route::post('/rates', [RateOverrideController::class, 'store']);
+            Route::patch('/rates/{rate}', [RateOverrideController::class, 'update']);
+            Route::delete('/rates/{rate}', [RateOverrideController::class, 'destroy']);
+        });
+
+        // Staff accounts
+        Route::middleware('permission:staff.manage')->group(function () {
+            Route::get('/staff', [StaffController::class, 'index']);
+            Route::post('/staff', [StaffController::class, 'store']);
+            Route::patch('/staff/{user}', [StaffController::class, 'update']);
+            Route::delete('/staff/{user}', [StaffController::class, 'destroy']);
         });
 
         // Room blocks
@@ -118,6 +158,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/blogs', [BlogController::class, 'adminIndex'])->middleware('permission:blog.edit-any');
 
         Route::middleware('permission:faq.manage')->group(function () {
+            Route::get('/faqs', [FAQController::class, 'adminIndex']);
             Route::post('/faqs', [FAQController::class, 'store']);
             Route::patch('/faqs/{faq}', [FAQController::class, 'update']);
             Route::delete('/faqs/{faq}', [FAQController::class, 'destroy']);

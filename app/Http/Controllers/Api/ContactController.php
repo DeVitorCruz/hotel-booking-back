@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonRespone;
+use Illuminate\Http\JsonResponse;
 use App\Models\Contact;
 
 class ContactController extends Controller

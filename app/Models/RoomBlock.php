@@ -12,8 +12,8 @@ class RoomBlock extends Model
     protected $fillable = ['room_id', 'start_date', 'end_date', 'reason', 'created_by'];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
+        'start_date' => 'date:Y-m-d',
+        'end_date' => 'date:Y-m-d',
     ];
 
     public function room(): BelongsTo

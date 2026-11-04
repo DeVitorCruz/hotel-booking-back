@@ -22,10 +22,12 @@ class BookingResource extends JsonResource
         $payment = $this->payments->sortByDesc('id')->first();
 
         return array_filter([
+            'id' => $this->forStaff ? $this->id : null,
             'reference' => $this->reference,
             'manage_token' => $this->withToken ? $this->manage_token : null,
             'status' => $this->status,
             'room_type' => new RoomTypeResource($this->whenLoaded('roomType')),
+            'room_id' => $this->forStaff ? $this->room_id : null,
             'room_number' => $this->forStaff ? $this->room?->number : null,
             'guest_name' => $this->guest_name,
             'guest_email' => $this->guest_email,

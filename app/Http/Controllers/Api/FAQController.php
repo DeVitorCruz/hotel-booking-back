@@ -25,6 +25,12 @@ class FAQController extends Controller
         );
     }
 
+    /** GET /admin/faqs - every FAQ, including hidden ones. */
+    public function adminIndex(): JsonResponse
+    {
+        return response()->json(FAQ::orderBy('order')->orderBy('id')->get());
+    }
+
     /**
      * POST /faqs - create (admin/owner/editor)
      * 

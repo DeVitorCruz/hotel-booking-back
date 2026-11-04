@@ -16,7 +16,10 @@ platform/tenant layer and marketplace modules removed; one install = one hotel.
 - PayPal: create order → buyer approves (JS SDK) → server capture; webhooks cover closed tabs
   and refunds; automatic refund on free cancellation
 - Pay at hotel option; unpaid PayPal holds expire after `HOTEL_HOLD_MINUTES`
-- Staff API: bookings, walk-ins, check-in/out, cancel/refund, room blocks, hotel settings
+- Staff API (`/api/admin/*`, used by the Angular back office at `/admin`):
+  dashboard, rooms × dates calendar, bookings, walk-ins, check-in/out, cancel/refund,
+  room types (with photo upload), rooms, seasonal rates, room blocks, hotel settings,
+  staff accounts, contact inbox, FAQ
 - Content kept from the base project: blog, FAQ, contact form, staff spotlights, auth, social login
 - Roles: `owner`, `admin`, `receptionist`, `editor`, `guest`
 
@@ -64,6 +67,27 @@ command=php /var/www/hotel-api/artisan queue:work --tries=3 --max-time=3600
 Errors from the booking flow return `{message, code}`; codes include `no_availability`,
 `invalid_dates`, `min_nights`, `too_many_guests`, `hold_expired`, `payment_failed`,
 `payment_method_disabled`, `gateway_unavailable`.
+
+## Back-office endpoints
+
+All under `auth:sanctum` + `staff`, each guarded by a permission:
+
+| Endpoints | Permission | Roles |
+|---|---|---|
+| `GET dashboard`, `GET calendar?from=&days=`, `GET bookings`, `GET bookings/{id}` | `bookings.view-any` | owner, admin, receptionist |
+| `POST bookings` (walk-in), `PATCH bookings/{id}/status`, `POST bookings/{id}/mark-paid` | `bookings.manage` | owner, admin, receptionist |
+| `POST bookings/{id}/cancel`, `POST bookings/{id}/refund` | `bookings.cancel-any` | owner, admin, receptionist |
+| `GET room-types`, `GET rooms`, `GET rates` | `rooms.view` | all staff |
+| room-types / rooms create, update, delete; `room-types/{id}/images` | `rooms.manage` | owner, admin |
+| `rates` create, update, delete | `rates.manage` | owner, admin |
+| `room-blocks` | `room-blocks.manage` | owner, admin, receptionist |
+| `settings` | `settings.manage` | owner, admin |
+| `staff` | `staff.manage` | owner, admin (only owners manage owners; the last owner is protected) |
+| `contacts`, `faqs`, `spotlights`, `blogs` | content permissions | owner, admin, editor (+ receptionist for contacts) |
+
+Room types and rooms that have booking history cannot be deleted (409 `has_bookings`);
+deactivate them instead. Photos are stored on the `public` disk, so run
+`php artisan storage:link` and set `APP_URL` to the API's public address.
 
 ## Tests
 
