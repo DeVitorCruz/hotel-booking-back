@@ -17,9 +17,10 @@ return [
         'client_id' => env('PAYPAL_CLIENT_ID', ''),
         'client_secret' => env('PAYPAL_CLIENT_SECRET', ''),
         'webhook_id' => env('PAYPAL_WEBHOOK_ID', ''),
-        'base_url' => env('PAYPAL_MODE', 'sandbox') === 'live'
+        // Override only for local mocks; normally derived from the mode.
+        'base_url' => env('PAYPAL_BASE_URL') ?: (env('PAYPAL_MODE', 'sandbox') === 'live'
             ? 'https://api-m.paypal.com'
-            : 'https://api-m.sandbox.paypal.com',
+            : 'https://api-m.sandbox.paypal.com'),
         'timeout' => (int) env('PAYPAL_TIMEOUT', 20),
     ],
 ];
