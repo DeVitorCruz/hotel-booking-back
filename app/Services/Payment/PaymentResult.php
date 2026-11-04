@@ -3,58 +3,46 @@
 namespace App\Services\Payment;
 
 /**
- * Normalized result returned by any gateway after createPayment().
- * Controllers and services always work with this object,
- * never with raw gateway responses.
+ * Normalized result returned by any gateway.
+ * Services always work with this object, never with raw gateway responses.
+ *
+ * status: pending | approved | paid | failed
+ *   approved = buyer approved, capture still needed (PayPal)
  */
 class PaymentResult
 {
-    /**
-     * Create a new class instance.
-     */
     public function __construct(
         public readonly string  $gatewayId,
-        public readonly string  $status,          // pending|paid|failed
-        public readonly array   $paymentDetails,  // pix_code, boleto_url, etc
-        public readonly array   $rawResponse,     // full gateway response for logging
+        public readonly string  $status,
+        public readonly array   $paymentDetails = [],   // approve_url, capture_id, instructions...
+        public readonly array   $rawResponse = [],      // full gateway response for logging
         public readonly ?string $expiresAt = null,
+        public readonly ?string $captureId = null,
+        public readonly ?string $amount = null,         // captured amount, decimal string
+        public readonly ?string $currency = null,
+        public readonly ?string $gatewayStatus = null,  // raw status string from the gateway
     ) {}
 
-    /**
-     * Check if the payment result is "pending"
-     * 
-     * @return bool
-     */
-    public function isPending(): bool 
-    { 
+    public function isPending(): bool
+    {
         return $this->status === 'pending';
     }
 
-    /**
-     * Check if the payment result is "paid"
-     * 
-     * @return bool
-     */
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
+
     public function isPaid(): bool
     {
         return $this->status === 'paid';
-    }   
+    }
 
-    /**
-     * Check if the payment result is "Failed"
-     * 
-     * @return bool
-     */
     public function isFailed(): bool
     {
         return $this->status === 'failed';
     }
 
-    /**
-     * get normalized gateway 
-     * 
-     * @return array
-     */
     public function toArray(): array
     {
         return [

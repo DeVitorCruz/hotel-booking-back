@@ -2,62 +2,48 @@
 
 namespace App\Services\Payment;
 
-use App\Models\Order;
+use App\Contracts\Payable;
 use Illuminate\Http\Request;
 
+/**
+ * Contract every payment gateway implements.
+ *
+ * Supports two-step gateways (PayPal: create → buyer approves → capture)
+ * and offline ones (pay at hotel). Adding a gateway = implement this
+ * interface + register it in GatewayFactory.
+ */
 interface PaymentGatewayInterface
 {
-    /**
-     * Initiate a payment for an order.
-     * Returns a PaymentResult with gateway_id, status and payment_details
-     * (PIX QR code, boleto URL, card redirect, etc.)
-     * 
-     * @param  Order         $order
-     * @param  string        $method
-     * @param  array         $data
-     * @return PaymentResult
-     */
-    public function createPayment(Order $order, string $method, array $data): PaymentResult;
+    /** Gateway key stored on payments.gateway */
+    public function name(): string;
 
     /**
-     * Query the current status of a payment from the gateway.
-     * 
-     * @param  string $gatewayId
-     * @return string
+     * Start a payment. For PayPal this creates an Order the buyer must approve;
+     * PaymentResult::$paymentDetails carries what the frontend needs
+     * (paypal_order_id, approve_url, ...).
+     *
+     * @param array $options return_url / cancel_url for redirect flows, etc.
      */
-    public function getPaymentStatus(string $gatewayId): string;
+    public function createPayment(Payable $payable, array $options = []): PaymentResult;
 
     /**
-     * Cancel a pending payment at the gateway level.
-     * 
-     * @param  string $gatewayId
-     * @return bool
+     * Capture an approved payment (two-step gateways). Must be safe to call twice.
      */
-    public function cancelPayment(string $gatewayId): bool;
+    public function capturePayment(string $gatewayId): PaymentResult;
+
+    /** Fetch the current state of a payment from the gateway. */
+    public function getPaymentStatus(string $gatewayId): PaymentResult;
 
     /**
-     * Validate that an incoming webhook request is authentic.
-     * Each gateway signs webhooks differently.
-     * 
-     * @param  Request $request
-     * @return bool       
+     * Refund a captured payment, fully or partially.
+     *
+     * @param string $amount decimal string, e.g. "120.00"
      */
+    public function refundPayment(string $captureId, string $amount, string $currency): RefundResult;
+
+    /** Verify an incoming webhook really comes from the gateway. */
     public function validateWebhook(Request $request): bool;
 
-    /**
-     * Parse a webhook payload into a normalized status string.
-     * Returns: pending | paid | failed | refunded
-     * 
-     * @param  Request $request
-     * @return string
-     */
-    public function parseWebhookStatus(Request $request): string;
-
-    /**
-     * Extract the gateway transaction ID from a webhook payload.
-     * 
-     * @param  Request $request
-     * @return string
-     */
-    public function parseWebhookGatewayId(Request $request): string;
+    /** Normalize a webhook into a WebhookEvent, or null when the event is irrelevant. */
+    public function parseWebhook(Request $request): ?WebhookEvent;
 }

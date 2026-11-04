@@ -118,7 +118,7 @@ class SocialAuthController extends Controller
         ]);
 
         // Assign default customer role
-        $user->assignRole('customer');
+        $user->assignRole('guest');
 
         Log::info("New user via {$provider} social login", ['user_id' => $user->id]);
 

@@ -16,10 +16,8 @@
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
-            'platform_staff' => \App\Http\Middleware\EnsureUserIsPlatformStaff::class,
+            'staff' => \App\Http\Middleware\EnsureUserIsStaff::class,
         ]);
-        $middleware->append(\App\Http\Middleware\ResolveTenant::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

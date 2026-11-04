@@ -6,48 +6,27 @@ use InvalidArgumentException;
 
 class GatewayFactory
 {
+    /** Gateway key => implementation. Adding a gateway = add it here + implement the interface. */
+    public const GATEWAYS = [
+        'paypal' => PayPalGateway::class,
+        'pay_at_hotel' => PayAtHotelGateway::class,
+    ];
+
     /**
-     * Resolve a gateway implementation by name.
-     * Adding a new gateway = add a case here + implement the interface.
-     * 
-     * @param  string                  $gateway 
-     * @return PaymentGatewayInterface
+     * Resolve a gateway through the container (so tests can swap implementations).
      */
     public static function make(string $gateway): PaymentGatewayInterface
     {
-        return match($gateway) {
-            'mercadopago' => new MercadoPagoGateway(),
-            'pagseguro' => new PagSeguroGateway(),
-            
-            default => throw new InvalidArgumentException(
-                "Unsupported payment gateway: [{$gateway}]. " . "Supported: mercadopago, pagseguro."
-            ),
-        };
+        $class = self::GATEWAYS[$gateway] ?? throw new InvalidArgumentException(
+            "Unsupported payment gateway: [{$gateway}]. Supported: " . implode(', ', self::supported()) . '.'
+        );
+
+        return app($class);
     }
 
-    /**
-     * List all supported gateways.
-     * 
-     * @return array
-     */
+    /** @return list<string> */
     public static function supported(): array
     {
-        return ['mercadopago', 'pagseguro'];
+        return array_keys(self::GATEWAYS);
     }
-
-    /**
-     * List supported payment methods per gateway.
-     * 
-     * @param  string $gateway
-     * @return array
-     */
-    public static function methods(string $gateway): array 
-    {
-        return match($gateway){
-            'mercadopago' => ['pix', 'boleto', 'card'],
-            'pagseguro' => ['pix', 'boleto', 'card'],
-
-            default => [],
-        };
-    }    
 }

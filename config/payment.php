@@ -1,46 +1,25 @@
 <?php
+
 return [
 
     /*
     |--------------------------------------------------------------------------
-    | Default Gateway
+    | PayPal (Orders v2)
     |--------------------------------------------------------------------------
-    | Used when no gateway is specified at checkout.
-    | Options: mercadopago | pagseguro
+    | Create a REST app at https://developer.paypal.com → Apps & Credentials.
+    | mode: sandbox | live
+    | webhook_id: ID of the webhook you register for POST {APP_URL}/api/webhooks/paypal
+    | Subscribe it to: CHECKOUT.ORDER.APPROVED, PAYMENT.CAPTURE.COMPLETED,
+    | PAYMENT.CAPTURE.DENIED, PAYMENT.CAPTURE.REFUNDED
     */
-    'default' => env('PAYMENT_GATEWAY', 'mercadopago'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Mercado Pago
-    |--------------------------------------------------------------------------
-    */
-    'mercadopago' => [
-        'base_url' => env('MP_BASE_URL', 'https://api.mercadopago.com'),
-        'access_token' => env('MP_ACCESS_TOKEN', ''),
-        'public_key' => env('MP_PUBLIC_KEY', ''),
-        'webhook_secret' => env('MP_WEBHOOK_SECRET', ''),
-        'sandbox' => env('MP_SANDBOX', true),
+    'paypal' => [
+        'mode' => env('PAYPAL_MODE', 'sandbox'),
+        'client_id' => env('PAYPAL_CLIENT_ID', ''),
+        'client_secret' => env('PAYPAL_CLIENT_SECRET', ''),
+        'webhook_id' => env('PAYPAL_WEBHOOK_ID', ''),
+        'base_url' => env('PAYPAL_MODE', 'sandbox') === 'live'
+            ? 'https://api-m.paypal.com'
+            : 'https://api-m.sandbox.paypal.com',
+        'timeout' => (int) env('PAYPAL_TIMEOUT', 20),
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | PagSeguro
-    |--------------------------------------------------------------------------
-    */
-    'pagseguro' => [
-        'base_url' => env('PS_BASE_URL', 'https://api.pagseguro.com'),
-        'token' => env('PS_TOKEN', ''),
-        'webhook_secret' => env('PS_WEBHOOK_SECRET', ''),
-        'sandbox' => env('PS_SANDBOX', true),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | PIX expiration (minutes)
-    | Boleto expiration (days)
-    |--------------------------------------------------------------------------
-    */
-    'pix_expiration_minutes' => env('PIX_EXPIRATION_MINUTES', 30),
-    'boleto_expiration_days' => env('BOLETO_EXPIRATION_DAYS', 3),
 ];
